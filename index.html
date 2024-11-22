@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dynamic Navigation</title>
+    <style>
+        .screen {
+            display: none;
+            margin: 20px;
+        }
+        .screen.active {
+            display: block;
+        }
+        .descriptor {
+            margin-top: 10px;
+            font-style: italic;
+        }
+        button {
+            margin-top: 10px;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .title-screen h1 {
+            font-size: 2em;
+            margin-bottom: 20px;
+        }
+        .title-screen p {
+            font-size: 1.2em;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+    // Screen Configuration
+    const screens = {
+        "Title Screen": {
+            options: {} // No options here
+        },
+        "Weapon": {
+            options: {
+                "Descura, the Witch's Staff": { description: "Strike with quick close-range Attack, or long-range Specials and Ω Moves.", destination: "Descura-Aspect" },
+                "Lim and Oros, the Sister Blades": { description: "Slash with furious Attacks, or strike from afar with a flurry of Specials.", destination: "Lim-and_Oros-Aspect" },
+                "Ygnium, the Umbral Flames": { description: "Launch damaging ranged Attacks as you move, or Specials that orbit around you.", destination: "Ygnium-Aspect" },
+                "Zorephet, the Moonstone Axe": { description: "Sweep through foes with a slow but devastating variety Attacks and Specials.", destination: "Zorephet-Aspect" },
+                "Revaal, the Argent Skull": { description: "Blast foes with explosive Attacks, and retrieve 💀 Shells with lunging Specials.", destination: "Revaal-Aspect" },
+                "Xinth, the Black Coat": { description: "Guard and retaliate with mighty Attacks, ensuring none escape with seeking Specials.", destination: "Xinth-Aspect" }
+            }
+        },
+
+        "Descura-Aspect": {
+            options: {
+                "Melinoë": { description: "You channel your Ω Moves [30%] faster.", destination: "Final Screen" },
+                "Circe": { description: "After your Attack or Special hit 12, gain Serenity (Your Ω Moves deal [40% more] damage and you rapidly restore Magick. Lasts 5 seconds.) on your next Ω Move.", destination: "Final Screen" },
+                "Momus": { description: "Whenever you use Ω Moves, each fires in place up to 3 times until you use it again. (Delay between Omega bursts: [2] Sec.)", destination: "Final Screen" }
+            }
+        },
+        "Lim-and_Oros-Aspect": {
+            options: {
+                "Melinoë": { description: "Your Attacks and Specials deal [100% more] damage by striking foes from behind.", destination: "Final Screen" },
+                "Artemis": { description: "While you Channel your Ω Attack [50% faster], you occasionally Parry (Prevent most types of direct attacks. Can be repeated after 15 Sec.), then immediately Riposte (You are Impervious for 1 Sec. Your next 9 strikes have a +50% Critical chance.) right after.", destination: "Final Screen" },
+                "Pan": { description: "Your Special seek foes in your Cast, and fire [1] more shots if you Channel longer.", destination: "Final Screen" }
+            }
+        },
+        "Ygnium-Aspect": {
+            options: {
+                "Melinoë": { description: "Flames from your Ω Special can burn [2.5 Sec.] longer before expiring.", destination: "Final Screen" },
+                "Moros": { description: "Your Attacks linger for 6 Sec., and explode in a blast if struck by your Special. (Blast damage: +[0]%)", destination: "Final Screen" },
+                "Eos": { description: "Your Ω Attack fire a Daybreaker (A slow seeking shot that blasts nearby foes and copies your Special. Limit 1 at a time.) that deals [100] damage in an area around it every 2 Sec.", destination: "Final Screen" }
+            }
+        },
+        "Zorephet-Aspect": {
+            options: {
+                "Melinoë": { description: "Gain [35] bonus Attack Power and Max Life.", destination: "Final Screen" },
+                "Charon": { description: "Your Cast lasts +3 Sec., and erupts like your Ω Cast if struck by your Ω Special. (Cleave-Cast size & damage: +[10]%)", destination: "Final Screen" },
+                "Thanatos": { description: "Your Attack is [10%] faster, and each strike grants Mortality (A fleeting bonus +1% Critical chance for your Ω Moves, up to a max of +13%.) until you take damage.", destination: "Final Screen" }
+            }
+        },
+        "Revaal-Aspect": {
+            options: {
+                "Melinoë": { description: "Your Attacks have [20] more power for each 💀 Shell fired not yet retrieved.", destination: "Final Screen" },
+                "Medea": { description: "Your Attack stay within reach, and explodes after landing your Specials or 3 Sec. (Attack & Special damage: +45%)", destination: "Final Screen" },
+                "Persephone": { description: "Your Ω Special is enhanced (+[10]% damage) and damage from your Casts can extend it by up to +2 Sec.", destination: "Final Screen" }
+            }
+        },
+        "Xinth-Aspect": {
+            options: {
+                "Melinoë": { description: "Your Attacks, Sprint, and move speed are [5%] faster.", destination: "Final Screen" },
+                "Selene": { description: "You start with Skyfall (ready after [100] Magick), a hidden Hex that strikes multiple foes and applies Shine (Curse: Afflicted foes take +50% more damage from Ω Moves. Lasts 8 Sec.).", destination: "Final Screen" },
+                "Nyx": { description: "You have a Ω Boost (Hold [Sprint] to use 30 Magick to power up your Sprint, dealing 150 area damage on impact.), which lets your produce Nightspawn (Your Attack and Special also split into 2 that deal [30%] damage. Lasts 5 Sec.) after you activate it.", destination: "Final Screen" }
+            }
+        },
+
+        "Final Screen": {
+            options: {} // No options here
+        }
+    };
+
+    // Track User Choices
+    const userChoices = [];
+
+    // History Stack for Navigation
+    let currentScreen = "Title Screen";
+    const historyStack = [];
+
+    // Render a Screen
+    function renderScreen(screenName) {
+        const screenData = screens[screenName];
+        const app = document.getElementById("app");
+
+        // Clear the app container
+        app.innerHTML = "";
+
+        // Create Screen Container
+        const screenDiv = document.createElement("div");
+        screenDiv.className = "screen active";
+        screenDiv.id = screenName;
+
+        // Handle Title Screen
+        if (screenName === "Title Screen") {
+            renderTitleScreen(screenDiv);
+            app.appendChild(screenDiv);
+            return;
+        }
+
+        // Add Screen Title
+        const title = document.createElement("h2");
+        title.textContent = screenName;
+        screenDiv.appendChild(title);
+
+        // Handle Final Screen
+        if (screenName === "Final Screen") {
+            renderFinalScreen(screenDiv);
+            app.appendChild(screenDiv);
+            return;
+        }
+
+        // Add Dropdown
+        const select = document.createElement("select");
+        select.id = `choice-${screenName}`;
+        select.innerHTML = `<option value="" disabled selected>Select an option...</option>`;
+        for (const [option, data] of Object.entries(screenData.options)) {
+            const opt = document.createElement("option");
+            opt.value = option;
+            opt.textContent = option;
+            select.appendChild(opt);
+        }
+        select.onchange = () => updateDescriptor(screenName, select.value);
+        screenDiv.appendChild(select);
+
+        // Add Descriptor
+        const descriptor = document.createElement("p");
+        descriptor.className = "descriptor";
+        descriptor.id = `desc-${screenName}`;
+        descriptor.textContent = "Please choose an option.";
+        screenDiv.appendChild(descriptor);
+
+        // Add Navigation Buttons
+        if (historyStack.length > 0) {
+            const backButton = document.createElement("button");
+            backButton.textContent = "Back";
+            backButton.onclick = goBack;
+            screenDiv.appendChild(backButton);
+        }
+
+        const nextButton = document.createElement("button");
+        nextButton.id = `next-${screenName}`;
+        nextButton.textContent = "Next";
+        nextButton.disabled = true;
+        nextButton.onclick = () => goNext(screenName, select.value);
+        screenDiv.appendChild(nextButton);
+
+        app.appendChild(screenDiv);
+        currentScreen = screenName;
+    }
+
+    // Render Title Screen
+    function renderTitleScreen(screenDiv) {
+        const title = document.createElement("h1");
+        title.textContent = "I HAVE DECISION PARALYSIS";
+        screenDiv.appendChild(title);
+
+        const description = document.createElement("p");
+        description.textContent = "Choose my next Hades II build. (NOT FINISHED)";
+        screenDiv.appendChild(description);
+
+        const startButton = document.createElement("button");
+        startButton.textContent = "Start";
+        startButton.onclick = () => renderScreen("Weapon");
+        screenDiv.appendChild(startButton);
+    }
+
+    // Update Descriptor and Enable Next Button
+    function updateDescriptor(screenName, selectedOption) {
+        const screenData = screens[screenName];
+        const descriptor = document.getElementById(`desc-${screenName}`);
+        const nextButton = document.getElementById(`next-${screenName}`);
+        if (screenData.options[selectedOption]) {
+            descriptor.textContent = screenData.options[selectedOption].description;
+            nextButton.disabled = false;
+        }
+    }
+
+    // Navigate to the Next Screen
+    function goNext(currentScreen, selectedOption) {
+        const choiceData = screens[currentScreen].options[selectedOption];
+        if (choiceData.destination) {
+            userChoices.push({ screen: currentScreen, choice: selectedOption });
+            historyStack.push(currentScreen);
+            renderScreen(choiceData.destination);
+        } else {
+            alert("Destination not found!");
+        }
+    }
+
+    // Navigate Back
+    function goBack() {
+        if (historyStack.length > 0) {
+            const previousScreen = historyStack.pop();
+            userChoices.pop();
+            renderScreen(previousScreen);
+        }
+    }
+
+    // Render Final Screen
+    function renderFinalScreen(screenDiv) {
+        // Show Summary
+        const summary = document.createElement("div");
+        summary.innerHTML = "<h3>Copy your build and send it to me (please).</h3>";
+        const results = userChoices
+            .map((choice) => `- ${choice.screen}: ${choice.choice}`)
+            .join("<br>");
+        const resultText = document.createElement("p");
+        resultText.id = "result-summary";
+        resultText.innerHTML = results;
+        summary.appendChild(resultText);
+        screenDiv.appendChild(summary);
+
+        // Add Copy Button
+        const copyButton = document.createElement("button");
+        copyButton.textContent = "Copy Results";
+        copyButton.onclick = copyResults;
+        screenDiv.appendChild(copyButton);
+
+        // Add Restart Button
+        const restartButton = document.createElement("button");
+        restartButton.textContent = "Restart";
+        restartButton.onclick = restart;
+        screenDiv.appendChild(restartButton);
+    }
+
+    // Copy Results to Clipboard
+    function copyResults() {
+        const resultSummary = document.getElementById("result-summary").innerText;
+        navigator.clipboard.writeText(resultSummary).then(() => {
+            alert("Results copied to clipboard!");
+        }).catch((err) => {
+            console.error("Failed to copy: ", err);
+        });
+    }
+
+    // Restart the Process
+    function restart() {
+        // Clear user choices and history
+        userChoices.length = 0;
+        historyStack.length = 0;
+
+        // Reset to Title Screen
+        renderScreen("Title Screen");
+    }
+
+    // Initial Render
+    renderScreen("Title Screen");
+</script>
+</body>
+</html>
